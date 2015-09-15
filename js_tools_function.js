@@ -187,3 +187,6 @@ function getObjectFirstElement(obj){
 	}
 	return false;
 }
+
+//¿Õº¯Êý
+function empty_func(){}
