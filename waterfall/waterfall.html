@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset='utf-8'>
+	</head>
+	<body>
+	</body>
+</html>
+<script src='../js/jquery.js'></script>
+<script src='waterfall.js'></script>
+<script>
+	$(document).ready(function(){
+		var main = $('<div>').css({position:'absolute', left:0, top:0}).appendTo($(document.body));
+		
+		waterfall_container_div = $('<div>').css({position:'absolute', left:0, top:0, width:850, height:600, overflowX:'hidden', overflowY:'scroll', border:'1px solid red'}).appendTo(main);
+		
+		var config = {
+			//父节点
+			container:waterfall_container_div,
+			//请求的php地址
+			post_addr:'../php/test.php',
+			//每一页的数据量
+			page_size:25,
+			//距离底部多少距离时触发
+			next_tick_range:100
+		}
+		
+		var callback = function(container, callback_data){
+			var data = JSON.parse(callback_data);
+			for(var i=0, len=data.length; i<len; i++){
+				var single_data = data[i];
+				$('<div>').css({position:'relative', cssFloat:'left', marginLeft:5, marginTop:5, width:150, height:150, backgroundColor:single_data.bgc}).appendTo(container);
+			}
+		}
+		
+		var waterfall_ins = new waterfall(config, callback);
+		
+		waterfall_ins.init();
+	})
+</script>

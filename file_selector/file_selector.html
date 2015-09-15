@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+	<head>
+	</head>
+	<body>
+	</body>
+</html>
+<script src='../jquery.js'></script>
+<script src='../js_tools_function.js'></script>
+<script src='file_selector.js'></script>
+<script>
+	$(document).ready(function(){
+		var container_div = $('<div>').css({position:'absolute', left:10, top:10, width:400, border:'1px solid red'}).appendTo($(document.body)).file_selector('init', {
+			childClass:'test',
+			original_css:{backgroundColor:'white'},
+			changed_css:{backgroundColor:'blue'},
+			click_func:function(data){
+				console.log('click_func', data);
+			},
+			click_with_ctrl_func:function(data){
+				console.log('click_with_ctrl_func', data);
+			},
+			click_with_shift_func:function(data){
+				console.log('click_with_shift_func', data);
+			}
+		});
+		
+		for(var i=0; i<10; i++){
+			$('<div>').css({position:'relative', width:400, height:50, backgroundColor:'blue'}).addClass('test').appendTo(container_div);
+		}
+	});
+
+</script>
