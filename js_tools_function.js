@@ -98,3 +98,92 @@ function convert_size(size, not_add_B){
 		return (size/1024/1024).toFixed(1)+'G' + (not_add_B ? '' : 'B');
 	}
 }
+
+/*
+用于清空一个对象
+@param Object obj 需要被清空的对象
+@return N/A 无返回值
+*/
+function clearObject(obj){
+	for(var i in obj){
+		delete obj[i];
+	}
+}
+
+/*
+用于检测一个对象是否为空对象
+@param Object obj 需要被检测的对象
+@return N/A 无返回值
+*/
+function isObjectEmpty(obj){
+	for(var i in obj){
+		return false;
+	}
+	return true;
+}
+
+/*
+用于返回一个对象的长度
+@param Object obj 需要被检测的对象
+@return int 被检测对象的长度
+*/
+function getObjectLength(obj){
+	var sum = 0;
+	for(var i in obj){
+		sum++;
+	}
+	return sum;
+}
+
+/*
+用于设置cookie
+@param string name 要设置的cookie的key
+@param string value 要设置的cookie的value
+@param string expiredays 要设置的cookie的过期时间
+@return N/A 无返回值
+*/
+function setCookie(name,value,expiredays){
+	var exdate=new Date()
+	exdate.setDate(exdate.getDate()+expiredays)
+	document.cookie=name+ "=" +escape(value)+
+	((expiredays==null) ? "" : ";expires="+exdate.toGMTString())
+};
+
+/*
+用于获取cookie某一项的值
+@param string c_name 要获取的cookie的key
+@return string 获取到的值 如果不存在则返回空
+*/
+function getCookie(c_name){
+	if (document.cookie.length>0){
+		c_start=document.cookie.indexOf(c_name + "=");
+		if (c_start!=-1){
+			c_start=c_start + c_name.length+1
+			c_end=document.cookie.indexOf(";",c_start)
+			if (c_end==-1){
+				c_end=document.cookie.length;
+			}
+			return unescape(document.cookie.substring(c_start,c_end));
+		}
+	}
+	return "";
+};
+
+/*
+用于获取对象的第一个键值对
+@param Object obj 目标对象
+@return Object 目标对象的第一个键值对
+@example {
+	key:'alpha'
+	value:'bravo'
+}
+*/
+function getObjectFirstElement(obj){
+	for(var i in obj){
+		return {
+			key:i,
+			value:obj[i]
+		}
+	}
+	return false;
+}
