@@ -190,3 +190,30 @@ function getObjectFirstElement(obj){
 
 //空函数
 function empty_func(){}
+
+/*
+用于返回某一个字符串最后一次出现在另一个字符串中的位置
+@param string str 目标字符串
+@param string word 需要匹配的关键字
+@return int/bool 如果没有找到的话则返回false 找到就返回位置
+*/
+function find_last_index(str, word){
+	var str_array = str.split(word);
+	
+	if(!str){
+		return false;
+	}
+	
+	var str_array_length = str_array.length;
+	if(str_array_length == 1){
+		return false;
+	}
+	
+	var sum = 0;
+	
+	for(var i=0; i<str_array_length-1; i++){
+		sum += str_array[i].length+1
+	}
+	
+	return sum-1;
+}
