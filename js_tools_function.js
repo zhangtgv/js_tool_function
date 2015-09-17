@@ -217,3 +217,44 @@ function find_last_index(str, word){
 	
 	return sum-1;
 }
+
+/*
+用于返回格式化后的剩余时间字符串
+@param int second 剩余的时间(秒)
+@param bool is_add_zero 当时分秒中的任意一个只有一位数的时候 是否要在前面加0
+@return string 格式化后的剩余时间
+*/
+function convert_left_time(seconds, is_add_zero){
+	var time_left_str = '';
+	var day = Math.floor(seconds / (60*60*24));
+	var hour = Math.floor(seconds % (60*60*24) / (60*60));
+	var minute = Math.floor(seconds % (60*60) / 60);
+	var second = Math.floor(seconds % 60);
+	
+	if(day > 0){
+		time_left_str += '大于一天';
+		return time_left_str;
+	}
+	
+	if(is_add_zero && hour<10){
+		time_left_str += '0' + hour;
+	}else{
+		time_left_str += hour;
+	}
+	time_left_str+=':';
+
+	if(is_add_zero && minute<10){
+		time_left_str += '0' + minute;
+	}else{
+		time_left_str += minute;
+	}
+	time_left_str+=':';
+
+	if(is_add_zero && second<10){
+		time_left_str += '0' + second;
+	}else{
+		time_left_str += second;
+	}
+	
+	return time_left_str;
+}
