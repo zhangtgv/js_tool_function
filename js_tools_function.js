@@ -258,3 +258,19 @@ function convert_left_time(seconds, is_add_zero){
 	
 	return time_left_str;
 }
+
+
+/*
+用于在新标签中打开网页
+@param string url 需要打开的目标页面的地址
+@param bool not_new_tag 是否要使用新页面打开
+@return N/A 无返回值
+*/
+function open_at_new_tag(url, not_new_tag){
+	var a = $('<a>').attr('href', url).attr('target', not_new_tag?'_self':'_blank').appendTo($(document.body))
+	.click(function(){
+		$(this).remove();
+	})
+	
+	var span = $('<span>').appendTo(a).click()
+}
