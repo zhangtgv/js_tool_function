@@ -38,7 +38,7 @@ waterfall.prototype.getNewData = function(page_num){
 	if(!wf._can_load){
 		return;
 	}
-	$.post(wf.config.post_addr, {page_size:wf.config.page_size, page_num:page_num}, function(html){
+	$.post(wf.config.post_addr, {limit:wf.config.page_size, offset:page_num*wf.config.page_size}, function(html){
 		wf._can_load = true;
 		this._current_max = +page_num;
 		wf._callback(wf.config.container, html);
