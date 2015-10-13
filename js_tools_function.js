@@ -218,47 +218,6 @@ function find_last_index(str, word){
 	return sum-1;
 }
 
-/*
-用于返回格式化后的剩余时间字符串
-@param int second 剩余的时间(秒)
-@param bool is_add_zero 当时分秒中的任意一个只有一位数的时候 是否要在前面加0
-@return string 格式化后的剩余时间
-*/
-function convert_left_time(seconds, is_add_zero){
-	var time_left_str = '';
-	var day = Math.floor(seconds / (60*60*24));
-	var hour = Math.floor(seconds % (60*60*24) / (60*60));
-	var minute = Math.floor(seconds % (60*60) / 60);
-	var second = Math.floor(seconds % 60);
-	
-	if(day > 0){
-		time_left_str += '大于一天';
-		return time_left_str;
-	}
-	
-	if(is_add_zero && hour<10){
-		time_left_str += '0' + hour;
-	}else{
-		time_left_str += hour;
-	}
-	time_left_str+=':';
-
-	if(is_add_zero && minute<10){
-		time_left_str += '0' + minute;
-	}else{
-		time_left_str += minute;
-	}
-	time_left_str+=':';
-
-	if(is_add_zero && second<10){
-		time_left_str += '0' + second;
-	}else{
-		time_left_str += second;
-	}
-	
-	return time_left_str;
-}
-
 
 /*
 用于在新标签中打开网页
@@ -273,4 +232,96 @@ function open_at_new_tag(url, not_new_tag){
 	})
 	
 	var span = $('<span>').appendTo(a).click()
+}
+
+
+/*
+用于将日期和时间转换成距离当前时间
+@param int now_time 当前的时间一般为new Date().getTime()
+@param string date_string 需要被对照的时间字符串
+@return string 距离当前时间的字符串
+*/
+function date_transform(now_time, date_string){
+	var date_obj = new Date(date_string.replace(/-/g,'/'));
+	
+	var date = date_obj.getDate();
+	var month = date_obj.getMonth()+1;
+	var year = date_obj.getFullYear();
+	
+	var time = date_obj.getTime();
+	
+	var time_diff = now_time - time;
+	
+	var return_str = '';
+	
+	if(time_diff < 3600000){
+		var val = Math.round(time_diff/1000/60);
+		if(val <= 1){
+			return_str = val + ' min ago';
+		}else{
+			return_str = val + ' mins ago';
+		}
+	}else if(time_diff >= 3600000 && time_diff < 3600000*24){
+		var val = Math.round(time_diff/3600000);
+		if(val <= 1){
+			return_str = val + ' hour ago';
+		}else{
+			return_str = val + ' hours ago';
+		}
+	}else if(time_diff >= 3600000*24 && time_diff < 3600000*24*7){
+		var val = Math.round(time_diff/3600000/24);
+		if(val <= 1){
+			return_str = val + ' day ago';
+		}else{
+			return_str = val + ' days ago';
+		}
+	}else{
+		return_str = [date, transform_date_suffix(date), ',', mapping_month(month), ',', year].join('');
+	}
+	
+	return return_str;
+	
+	function transform_date_suffix(date){
+		date = +date;
+		if(date === 1){
+			return 'st';
+		}else if(date === 2){
+			return 'nd';
+		}else if(date === 3){
+			return 'rd';
+		}else{
+			return 'th';
+		}
+	}
+	
+	function mapping_month(month){
+		month = +month;
+		
+		switch(month){
+			case 1:
+				return 'Jan';
+			case 2:
+				return 'Feb';
+			case 3:
+				return 'Mar';
+			case 4:
+				return 'Apr';
+			case 5:
+				return 'May';
+			case 6:
+				return 'Jun';
+			case 7:
+				return 'Jul';
+			case 8:
+				return 'Aug';
+			case 9:
+				return 'Sep';
+			case 10:
+				return 'Oct';
+			case 11:
+				return 'Nov';
+			case 12:
+				return 'Dec';
+		}
+	}
 }
