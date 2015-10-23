@@ -325,3 +325,33 @@ function date_transform(now_time, date_string){
 		}
 	}
 }
+
+
+//将外部的文字复制到网页中
+//过滤掉所有的标签 并且把回车换成<br>
+.bind('paste', function(e){
+	e.preventDefault();
+	var ua = navigator.userAgent;
+	
+	var copy_content = '';
+	if(ua.indexOf('Trident')>-1 || ua.indexOf('MSIE')>-1){
+		copy_content = window.clipboardData.getData('text');
+	}else{
+		copy_content = e.originalEvent.clipboardData.getData('Text');
+	}
+	copy_content = copy_content.replace(/<[^>]*>/g, '')
+	copy_content = copy_content.replace(/(\r\n|\r|\n)/g, '<br>');
+	
+	
+	var range = sel.getRangeAt(0);  
+	range.deleteContents();
+	sel.removeAllRanges();
+	
+	var frag = editor_document.createDocumentFragment();
+	var content_span = editor_document.createElement('span');
+	content_span.innerHTML = copy_content;
+	frag.appendChild(content_span);
+	
+	range.insertNode(frag);
+	sel.addRange(range);
+})
