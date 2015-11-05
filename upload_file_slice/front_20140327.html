@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ZH">
+	<head>
+		<meta http-equiv=Content-Type content="text/html;charset=utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+	</head>			
+	<body> 
+		<div>username:<input type='text' id='username' /></div>
+		<div>password:<input type='text' id='password' /></div>
+		<div>file:<input type='file' id='file' multiple='multiple' /></div>
+		<div><button type='text' id='btn'>submit</button></div>
+	</body> 
+</html>
+<script>
+	var username = document.getElementById('username');
+	var password = document.getElementById('password');
+	var file = document.getElementById('file');
+	var btn = document.getElementById('btn');
+	var max = 0;
+	now = 0;
+	btn.onclick = function(){
+		var size = 100000;
+		var filename = '';
+		var myFormData = new FormData();
+		var single_file = file.files[0];
+		filename = single_file.name;
+		max = Math.ceil(single_file.size/size);
+		var xhr = new XMLHttpRequest();
+		xhr.open("post", "upload.php", true);
+		xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+		myFormData.append('file', single_file.slice(now*size, (now+1)*size));
+		myFormData.append('filename', filename);
+		xhr.send(myFormData);
+		xhr.onload = function() {
+			if (xhr.status == 200/* && xhr.responseText*/){
+				if(now<max-1){
+					now++;
+					btn.click();
+				}else{
+					now = 0;
+				}
+			}
+		}
+	}
+</script>

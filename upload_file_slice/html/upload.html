@@ -1,0 +1,331 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset='utf-8'>
+	</head>
+	<body>
+		<input type='file' id='file' multiple='multiple'/>
+	</body>
+</html>
+<script src='../js/jquery.js'></script>
+<script>
+	$(document).ready(function(){
+		var configObj = {
+			onProgress : function(data){
+				console.log('onprogress', data);
+				$('#'+data.randomName+' .progress').text(data.progress*100+'%');
+			},
+			onFileComplete : function(data){
+				console.log('onfileComplete', data);
+				$('#'+data.completedRandomName+' .progress').text('上传完成');
+			},
+			onTotalComplete : function(){
+				console.log('onTotalComplete');
+			}
+		}
+	
+		var fileUploader_ins = new fileUploader(configObj);
+		
+		var file = $('#file');
+		
+		file.change(function(){
+			var files = fileUploader_ins.dealFiles(file[0].files);
+			
+			for(var i=0, len=files.length; i<len; i++){
+				createSingleRecord(container_div, files[i]);
+			}
+			
+			fileUploader_ins.addFiles(files);
+		})
+		
+		var container_div = $('<div>').css({position:'absolute', left:0, top:30, width:510}).appendTo($(document.body));
+		
+		function createSingleRecord(father, data){
+			var single_div = $('<div>').css({position:'relative', cssFloat:'left', width:500, height:30, border:'1px solid red'}).attr('id', data.randomName).appendTo(father);
+			
+			var filename_div = $('<div>').css({position:'absolute', left:0, top:0, width:200, height:30, lineHeight:'30px'}).text(data.name).appendTo(single_div);
+			
+			var progress_div = $('<div>').css({position:'absolute', left:200, top:0, width:100, height:30, lineHeight:'30px'}).addClass('progress').text('等待中').appendTo(single_div);
+			
+			var resume_div = $('<div>').css({position:'absolute', right:100, top:0, width:50, height:30, lineHeight:'30px', cursor:'pointer', textAlign:'center'}).data('randomName', data.randomName).text('启动').appendTo(single_div)
+			.click(function(){
+				fileUploader_ins.resume($(this).data('randomName'));
+			})
+			
+			var pause_div = $('<div>').css({position:'absolute', right:50, top:0, width:50, height:30, lineHeight:'30px', cursor:'pointer', textAlign:'center'}).data('randomName', data.randomName).text('暂停').appendTo(single_div)
+			.click(function(){
+				fileUploader_ins.pause($(this).data('randomName'));
+			})
+			
+			var cancel_div = $('<div>').css({position:'absolute', right:0, top:0, width:50, height:30, lineHeight:'30px', cursor:'pointer', textAlign:'center'}).data('randomName', data.randomName).text('取消').appendTo(single_div).click(function(){
+				fileUploader_ins.cancel($(this).data('randomName'));
+				$(this).parent().remove();
+			})
+		}
+	})
+	
+	
+	function fileUploader(configObj){
+		var config = {
+			fragmentSize : 1000000,  //文件分片的大小
+			destination : '../php/upload.php',  //文件上传的目标地址
+			onProgress : configObj.onProgress || emptyFunc,  //当在上传的过程中的回调函数
+			onFileComplete : configObj.onFileComplete || emptyFunc,  //单个文件上传完成的回调函数
+			onTotalComplete : configObj.onTotalComplete || emptyFunc  //所有文件都上传完成的回调函数
+		};
+		
+		var fileInfo = {
+			fileArr: [],	//需要上传的文件列表
+			fileIndex: 0,	//表示当前是第几个文件
+			calcFileRandomName : null,  //当前正在计算哈希值的文件randomName
+			isTotalCompleted : true  //是否全部都已经上传完成
+		};
+		
+		var worker = new Worker("../js/worker.js");
+		
+		worker.onmessage = function(e){
+			//获取计算好的文件哈希值
+			var fileHash = e.data;
+			
+			//对被计算的文件设置哈希值
+			var fileIndex = methods.setFileUploadName(fileHash);
+			if(fileIndex === false){
+				//如果找不到这个被计算文件 则查找第一个正在等待上传的文件索引
+				var firstWaitingFileIndex = methods.getFirstWaitingFileIndex();
+				if(firstWaitingFileIndex === false){
+					//如果是false就说明找不到
+					alert('暂时没啥好传的了');
+					return;
+				}else{
+					//如果还有 那么把fileIndex设置成这个索引
+					fileInfo.fileIndex = firstWaitingFileIndex;
+				}
+			}else{
+				//找到被计算的文件 则将这个fileIndex设置为被计算的文件索引
+				fileInfo.fileIndex = fileIndex;
+			}
+			
+			//触发上传
+			methods.sliceAndSendData();
+		}
+		
+		var methods = {
+			init : function(){
+				console.log('init');
+			},
+			addFiles : function(files){
+				for(var i=0, len=files.length; i<len; i++){
+					var singleFile = files[i];
+					var fileInfoObj = {
+						uploadName : null,
+						now : 0,
+						max : Math.ceil(singleFile.size / config.fragmentSize),
+						isPause : false,
+						isCancel : false,
+						file : singleFile,
+						randomName : singleFile.randomName
+					};
+					
+					fileInfo.fileArr.push(fileInfoObj);
+				}
+				
+				console.log(fileInfo);
+				
+				if(fileInfo.isTotalCompleted){
+					//如果没有可上传的文件了 那么需要重新启动上传流程
+					methods.sliceAndSendData();
+					
+					fileInfo.isTotalCompleted = false;
+				}
+			},
+			sliceAndSendData : function(){
+				var currentFile = fileInfo.fileArr[fileInfo.fileIndex];
+				if(!currentFile.uploadName){
+					fileInfo.calcFileRandomName = currentFile['randomName'];
+					
+					worker.postMessage(currentFile.file);
+					$('#'+currentFile.randomName+' .progress').text('读取中');
+					
+					return;
+				}
+				
+				if(currentFile.isPause === true){
+					return;
+				}
+				
+				if(currentFile.isCancel === true){
+					fileInfo.fileArr.splice(fileInfo.fileIndex, 1);
+					
+					var firstWaitingFileIndex = methods.getFirstWaitingFileIndex();
+					if(firstWaitingFileIndex === false){
+						return;
+					}else{
+						fileInfo.fileIndex = firstWaitingFileIndex;
+						
+						methods.sliceAndSendData();
+					}
+					
+					return;
+				}
+				
+				var myFormData = new FormData();
+				var xhr = new XMLHttpRequest();
+				xhr.open("post", config.destination, true);
+				xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+				
+				//对文件进行分片操作
+				myFormData.append('fileFragment', currentFile.file.slice(currentFile.now*config.fragmentSize, (+currentFile.now+1)*config.fragmentSize));
+				
+				myFormData.append('uploadName', currentFile.uploadName);
+				
+				xhr.send(myFormData);
+				
+				xhr.onload = function(){
+					if (xhr.status == 200){
+						//服务器发回ok表示写入操作成功
+						if(xhr.responseText == 'ok'){
+							//如果没有到最后一个分片
+							if(currentFile.now < currentFile.max-1){
+								currentFile.now += 1;
+								
+								var data = {
+									randomName : currentFile.randomName,
+									progress : currentFile.now / currentFile.max
+								};
+								config.onProgress(data);
+								
+								methods.sliceAndSendData();
+							}else{
+								fileInfo.fileArr.splice(fileInfo.fileIndex, 1);
+								//当前处理的文件序号加一
+								var firstWaitingFileIndex = methods.getFirstWaitingFileIndex();
+								
+								fileInfo.fileIndex = firstWaitingFileIndex;
+								
+								var data = {
+									completedRandomName : currentFile.randomName,
+									nextRandomName : firstWaitingFileIndex === false ? null : fileInfo.fileArr[fileInfo.fileIndex].randomName
+								}
+								config.onFileComplete(data);
+								
+								if(firstWaitingFileIndex === false){
+									config.onTotalComplete();
+									fileInfo.isTotalCompleted = true;
+									alert('complete');
+									return;
+								}
+								
+								methods.sliceAndSendData();
+							}
+						}else{
+							alert('分片上传失败');
+							console.log(xhr.responseText);
+							methods.sliceAndSendData();
+						}
+					}
+				}
+			},
+			getFirstWaitingFileIndex : function(){
+				for(var i=0, len=fileInfo.fileArr.length; i<len; i++){
+					var singleFile = fileInfo.fileArr[i];
+					if(singleFile.isPause === false){
+						return i;
+					}
+				}
+				return false;
+			},
+			setFileUploadName : function(uploadName){
+				if(!fileInfo.calcFileRandomName){
+					alert('你特么的在逗我1');
+					return false;
+				}
+				
+				for(var i=0, len=fileInfo.fileArr.length; i<len; i++){
+					var singleFile = fileInfo.fileArr[i];
+					if(singleFile.randomName === fileInfo.calcFileRandomName){
+						singleFile.uploadName = uploadName + create_random();
+						fileInfo.calcFileRandomName = null;
+						return i;
+					}
+				}
+				
+				alert('你特么的在逗我2');
+				return false;
+			},
+			dealFiles : function(files){
+				for(var i=0, len=files.length; i<len; i++){
+					files[i].randomName = create_random();
+				}
+				
+				return files;
+			},
+			pause : function(fileRandomName){
+				for(var i=0, len=fileInfo.fileArr.length; i<len; i++){
+					var singleFile = fileInfo.fileArr[i];
+					if(singleFile.randomName == fileRandomName){
+						if(singleFile.isPause === false){
+							singleFile.isPause = true;
+						}
+						break;
+					}
+				}
+				
+				var firstWaitingFileIndex = methods.getFirstWaitingFileIndex();
+				if(firstWaitingFileIndex === false){
+					return;
+				}else{
+					fileInfo.fileIndex = firstWaitingFileIndex;
+					
+					methods.sliceAndSendData();
+				}
+			},
+			resume : function(fileRandomName){
+				for(var i=0, len=fileInfo.fileArr.length; i<len; i++){
+					var singleFile = fileInfo.fileArr[i];
+					if(singleFile.randomName == fileRandomName){
+						if(singleFile.isPause === true){
+							singleFile.isPause = false;
+							fileInfo.isTotalCompleted = false;
+							break;
+						}else{
+							return;
+						}
+					}
+				}
+				
+				fileInfo.fileIndex = methods.getFirstWaitingFileIndex();
+					
+				methods.sliceAndSendData();
+			},
+			cancel : function(fileRandomName){
+				var currentFile = fileInfo.fileArr[fileInfo.fileIndex];
+				if(currentFile.randomName === fileRandomName){
+					currentFile.isCancel = true;
+				}else{
+					//这里不可以使用i<len的写法 因为会在循环中对数组进行操作 一旦用了i<len的写法 会导致数组越界
+					for(var i=0; i<fileInfo.fileArr.length; i++){
+						var singleFile = fileInfo.fileArr[i];
+						if(singleFile.randomName === fileRandomName){
+							fileInfo.fileArr.splice(i, 1);
+						}
+					}
+				}
+			}
+		}
+		
+		return {
+			init : methods.init,
+			addFiles : methods.addFiles,
+			dealFiles : methods.dealFiles,
+			pause : methods.pause,
+			resume : methods.resume,
+			cancel : methods.cancel
+		};
+	}
+	
+	function create_random(){
+		return new Date().getTime() + "_" + Math.floor(Math.random()*10000);
+	}
+	
+	function emptyFunc(){}
+</script>

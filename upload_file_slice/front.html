@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ZH">
+	<head>
+		<meta http-equiv=Content-Type content="text/html;charset=utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+	</head>			
+	<body> 
+		<div>username:<input type='text' id='username' /></div>
+		<div>password:<input type='text' id='password' /></div>
+		<div>file:<input type='file' id='file' multiple='multiple' /></div>
+		<div>
+			<button id='submit_btn'>submit</button>
+			<button id='start_btn'>start</button>
+			<button id='stop_btn'>stop</button>
+		</div>
+	</body> 
+</html>
+<script>
+	var username = document.getElementById('username');
+	var password = document.getElementById('password');
+	var file = document.getElementById('file');
+	var submit_btn = document.getElementById('submit_btn');
+	var start_btn = document.getElementById('start_btn');
+	var stop_btn = document.getElementById('stop_btn');
+	
+	//这个变量是储存和文件有关的信息的 详情请看init_status_obj函数
+	var file_status = init_status_obj();
+	
+	submit_btn.onclick = function(){
+		//填充需要上传的文件数组
+		file_status.file_arr = file.files;
+		
+		//初始化第一个上传
+		init(file_status.file_arr[file_status.file_index]);
+	}
+	
+	start_btn.onclick = function(){
+		if(!file_status.is_pause){
+			alert('你没有暂停');
+		}else{
+			file_status.is_pause = false;
+			
+			//从当前的状态开始继续上传
+			slide_and_send(file_status.single_file, file_status.filename, file_status.now, file_status.size, file_status.max)
+		}
+	}
+	
+	stop_btn.onclick = function(){
+		file_status.is_pause = true;
+	}
+	
+	function init_status_obj(){
+		return {
+			file_arr: [],	//需要上传的文件列表
+			now: false,		//当前文件到第几个分片了
+			size: 0,		//每个分片的大小
+			single_file: null,	//当前是哪个文件
+			filename: '',		//当前的文件名
+			max: 0,				//当前文件一共被分为多少片
+			is_pause: false,	//表示当前是否处于暂停状态
+			file_index: 0		//表示当前是第几个文件
+		};
+	}
+	
+	function init(single_file){
+		//当前文件在第几个分片
+		var now = 0;
+		
+		//分片大小
+		var size = 10000000;
+		
+		//文件的名字 由时间戳 随机数 文件本身的名字组成
+		var filename = Date.now()+'_'+Math.floor(Math.random()*10000)+'_'+single_file.name;
+		
+		//计算当前文件一共需要多少个分片
+		var max = Math.ceil(single_file.size/size);
+		
+		file_status.now = now;
+		file_status.size = size;
+		file_status.single_file = single_file;
+		file_status.filename = filename;
+		file_status.max = max;
+		
+		//开始分片并上传
+		slide_and_send(single_file, filename, now, size, max);
+	}
+	
+	function slide_and_send(single_file, filename, args_now, size, max){
+		var now = args_now;
+		var myFormData = new FormData();
+		var xhr = new XMLHttpRequest();
+		xhr.open("post", "upload.php", true);
+		xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+		
+		//对文件进行分片操作
+		myFormData.append('file', single_file.slice(now*size, (now+1)*size));
+		
+		myFormData.append('filename', filename);
+		xhr.send(myFormData);
+		xhr.onload = function() {
+			if (xhr.status == 200){
+				//服务器发回ok表示写入操作成功
+				if(xhr.responseText == 'ok'){
+					//如果没有到最后一个分片
+					if(now<max-1){
+						now += 1;
+						file_status.now = now;
+						//判断是不是暂停
+						if(file_status.is_pause){
+							return;
+						}
+						slide_and_send(single_file, filename, now, size, max);
+					}else{
+						//当前处理的文件序号加一
+						file_status.file_index += 1;
+						//如果没有到最后一个文件
+						if(file_status.file_index < file_status.file_arr.length){
+							//初始化下一个文件
+							init(file_status.file_arr[file_status.file_index]);
+						}else{
+							//全部完成后重置file_status对象
+							file_status = init_status_obj();
+							alert('transform complete');
+						}
+					}
+				}else{
+					//如果服务器发回的不是ok 就要重新发送当前的分片
+					alert('fail');
+					slide_and_send(single_file, filename, now, size, max);
+				}
+			}
+		}
+	}
+</script>
